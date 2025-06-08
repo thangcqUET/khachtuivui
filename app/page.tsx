@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { useActionState } from "react"
 import { submitForm } from "./actions"
+import { AuthButtons } from "@/components/auth-buttons"
 
 export default function LandingPage() {
   const [state, action, isPending] = useActionState(submitForm, null)
@@ -221,9 +222,7 @@ export default function LandingPage() {
                   </div>
                 </DialogContent>
               </Dialog>
-              <Button variant="outline" className="hidden md:flex">
-                Liên hệ
-              </Button>
+              <AuthButtons />
             </div>
           </div>
         </div>

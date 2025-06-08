@@ -2,32 +2,14 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
+import { AuthProvider } from "@/hooks/useAuth"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Khách tui vui - Giải pháp IoT giao tiếp khách hàng thông minh",
-  description:
-    "Trò chuyện với khách hàng của bạn cùng Khách tui vui. Lời nói chẳng mất tiền mua – Lựa lời mà nói cho vừa lòng nhau. Giải pháp IoT giúp doanh nghiệp giao tiếp tinh tế với khách hàng.",
-  keywords: "IoT, giao tiếp khách hàng, tự động hóa, nhà hàng, quán cà phê, dịch vụ khách hàng, Việt Nam",
-  authors: [{ name: "Khách tui vui Team" }],
-  openGraph: {
-    title: "Khách tui vui - Giải pháp IoT giao tiếp khách hàng thông minh",
-    description:
-      "Trò chuyện với khách hàng của bạn cùng Khách tui vui. Giải pháp IoT giúp doanh nghiệp giao tiếp tinh tế với khách hàng.",
-    type: "website",
-    locale: "vi_VN",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Khách tui vui - Giải pháp IoT giao tiếp khách hàng thông minh",
-    description:
-      "Trò chuyện với khách hàng của bạn cùng Khách tui vui. Giải pháp IoT giúp doanh nghiệp giao tiếp tinh tế với khách hàng.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  title: "Khách Tui Vui - Dashboard",
+  description: "Hệ thống quản lý cửa hàng thông minh",
     generator: 'v0.dev'
 }
 
@@ -37,8 +19,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="vi">
-      <body className={inter.className}>{children}</body>
+    <html lang="vi" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AuthProvider>{children}</AuthProvider>
+        </ThemeProvider>
+      </body>
     </html>
   )
 }
