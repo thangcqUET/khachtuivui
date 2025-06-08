@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,7 +38,12 @@ import {
   CheckCircle,
   MessageSquare,
   Copy,
+  Loader2,
 } from "lucide-react"
+
+import { useDevices, useShops, useGateways, useTables, useDeviceMessages } from "@/hooks/use-database"
+import { useAuth } from "@/hooks/useAuth"
+import { toast } from "@/hooks/use-toast"
 
 type Message = {
   id: string
@@ -66,143 +71,26 @@ type Device = {
 }
 
 export default function DevicesPage() {
-  const [shops] = useState([
-    { id: "1", name: "Cà phê Khách Tui Vui" },
-    { id: "2", name: "Nhà hàng Khách Vui" },
-  ])
-
-  const [gateways] = useState([
-    { id: "1", name: "Gateway Tầng 1", shopId: "1" },
-    { id: "2", name: "Gateway Tầng 2", shopId: "1" },
-    { id: "3", name: "Gateway Chính", shopId: "2" },
-  ])
-
-  const [tables] = useState([
-    { id: "1", number: "1", shopId: "1" },
-    { id: "2", number: "2", shopId: "1" },
-    { id: "3", number: "3", shopId: "1" },
-    { id: "4", number: "4", shopId: "1" },
-    { id: "5", number: "5", shopId: "1" },
-    { id: "9", number: "9", shopId: "2" },
-    { id: "10", number: "10", shopId: "2" },
-  ])
-
-  const [devices, setDevices] = useState<Device[]>([
-    {
-      id: "1",
-      code: "KTV-D001",
-      name: "Thiết bị bàn 1",
-      gatewayId: "1",
-      gatewayName: "Gateway Tầng 1",
-      tableId: "1",
-      tableNumber: "1",
-      shopId: "1",
-      shopName: "Cà phê Khách Tui Vui",
-      status: "online",
-      batteryLevel: 85,
-      lastSeen: "1 phút trước",
-      version: "v2.1.0",
-      messages: [
-        {
-          id: "m1",
-          content: "Xin chào! Chào mừng bạn đến với quán cà phê của chúng tôi.",
-          type: "greeting",
-          isActive: true,
-          createdAt: "2024-01-15T10:00:00Z",
-        },
-        {
-          id: "m2",
-          content: "Bạn đã ngồi khá lâu rồi, có muốn gọi thêm gì không?",
-          type: "reminder",
-          isActive: true,
-          createdAt: "2024-01-15T10:30:00Z",
-        },
-      ],
-    },
-    {
-      id: "2",
-      code: "KTV-D002",
-      name: "Thiết bị bàn 2",
-      gatewayId: "1",
-      gatewayName: "Gateway Tầng 1",
-      tableId: "2",
-      tableNumber: "2",
-      shopId: "1",
-      shopName: "Cà phê Khách Tui Vui",
-      status: "online",
-      batteryLevel: 92,
-      lastSeen: "30 giây trước",
-      version: "v2.1.0",
-      messages: [
-        {
-          id: "m3",
-          content: "Chúng tôi có món mới hôm nay, bạn có muốn thử không?",
-          type: "promotion",
-          isActive: true,
-          createdAt: "2024-01-15T11:00:00Z",
-        },
-      ],
-    },
-    {
-      id: "3",
-      code: "KTV-D003",
-      name: "Thiết bị bàn 3",
-      gatewayId: "1",
-      gatewayName: "Gateway Tầng 1",
-      tableId: "3",
-      tableNumber: "3",
-      shopId: "1",
-      shopName: "Cà phê Khách Tui Vui",
-      status: "low_battery",
-      batteryLevel: 15,
-      lastSeen: "5 phút trước",
-      version: "v2.0.5",
-      messages: [],
-    },
-    {
-      id: "4",
-      code: "KTV-D004",
-      name: "Thiết bị dự phòng",
-      gatewayId: "2",
-      gatewayName: "Gateway Tầng 2",
-      tableId: null,
-      tableNumber: null,
-      shopId: "1",
-      shopName: "Cà phê Khách Tui Vui",
-      status: "offline",
-      batteryLevel: 0,
-      lastSeen: "2 giờ trước",
-      version: "v2.1.0",
-      messages: [],
-    },
-  ])
-
+  const { user } = useAuth()
+  const { shops, loading: shopsLoading } = useShops()
   const [selectedShop, setSelectedShop] = useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false)
-  const [isMessagesDialogOpen, setIsMessagesDialogOpen] = useState(false)
-  const [currentDevice, setCurrentDevice] = useState<Device | null>(null)
-  const [newDevice, setNewDevice] = useState<
-    Omit<
-      Device,
-      | "id"
-      | "gatewayName"
-      | "tableNumber"
-      | "shopName"
-      | "status"
-      | "batteryLevel"
-      | "lastSeen"
-      | "version"
-      | "messages"
-    >
-  >({
+  const { devices, loading: devicesLoading, createDevice, updateDevice, deleteDevice } = useDevices(selectedShop)
+  const { gateways } = useGateways(selectedShop)
+  const { tables } = useTables(selectedShop)
+
+  // Set default shop when shops load
+  useEffect(() => {
+    if (shops.length > 0 && !selectedShop) {
+      setSelectedShop(shops[0].id)
+    }
+  }, [shops, selectedShop])
+
+  const [newDevice, setNewDevice] = useState({
     code: "",
     name: "",
-    gatewayId: "",
-    tableId: null,
-    shopId: "",
+    gateway_id: "",
+    table_id: null as string | null,
+    shop_id: "",
   })
 
   const [newMessage, setNewMessage] = useState<Omit<Message, "id" | "createdAt">>({
@@ -211,87 +99,115 @@ export default function DevicesPage() {
     isActive: true,
   })
 
+  const [currentDevice, setCurrentDevice] = useState<Device | null>(null)
+
+  const { messages, createMessage, updateMessage, deleteMessage } = useDeviceMessages(currentDevice?.id || "")
+
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false)
+  const [isMessagesDialogOpen, setIsMessagesDialogOpen] = useState(false)
+
   const filteredDevices = selectedShop ? devices.filter((device) => device.shopId === selectedShop) : devices
   const availableTables = tables.filter(
     (table) =>
-      table.shopId === (currentDevice?.shopId || newDevice.shopId) &&
+      table.shopId === (currentDevice?.shopId || newDevice.shop_id) &&
       !devices.some((device) => device.tableId === table.id && device.id !== currentDevice?.id),
   )
 
-  const handleAddDevice = () => {
-    const gateway = gateways.find((g) => g.id === newDevice.gatewayId)
-    const shop = shops.find((s) => s.id === newDevice.shopId)
-    const table = tables.find((t) => t.id === newDevice.tableId)
-
-    const device: Device = {
-      id: Date.now().toString(),
-      ...newDevice,
-      gatewayName: gateway?.name || "",
-      tableNumber: table?.number || null,
-      shopName: shop?.name || "",
-      status: "offline",
-      batteryLevel: 100,
-      lastSeen: "Chưa kết nối",
-      version: "v2.1.0",
-      messages: [],
+  const handleAddDevice = async () => {
+    try {
+      await createDevice({
+        ...newDevice,
+        shop_id: newDevice.shop_id,
+      })
+      setNewDevice({
+        code: "",
+        name: "",
+        gateway_id: "",
+        table_id: null,
+        shop_id: "",
+      })
+      setIsAddDialogOpen(false)
+      toast({
+        title: "Thành công",
+        description: "Đã thêm thiết bị mới",
+      })
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm thiết bị",
+        variant: "destructive",
+      })
     }
-    setDevices([...devices, device])
-    setNewDevice({
-      code: "",
-      name: "",
-      gatewayId: "",
-      tableId: null,
-      shopId: "",
-    })
-    setIsAddDialogOpen(false)
   }
 
-  const handleEditDevice = () => {
+  const handleEditDevice = async () => {
     if (!currentDevice) return
 
-    const gateway = gateways.find((g) => g.id === currentDevice.gatewayId)
-    const table = tables.find((t) => t.id === currentDevice.tableId)
+    try {
+      await updateDevice({
+        id: currentDevice.id,
+        code: currentDevice.code,
+        name: currentDevice.name,
+        gateway_id: currentDevice.gatewayId,
+      })
 
-    setDevices(
-      devices.map((device) =>
-        device.id === currentDevice.id
-          ? {
-              ...device,
-              code: currentDevice.code,
-              name: currentDevice.name,
-              gatewayId: currentDevice.gatewayId,
-              gatewayName: gateway?.name || "",
-              tableId: currentDevice.tableId,
-              tableNumber: table?.number || null,
-            }
-          : device,
-      ),
-    )
-    setIsEditDialogOpen(false)
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật thiết bị",
+      })
+      setIsEditDialogOpen(false)
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật thiết bị",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleDeleteDevice = () => {
+  const handleDeleteDevice = async () => {
     if (!currentDevice) return
-    setDevices(devices.filter((device) => device.id !== currentDevice.id))
-    setIsDeleteDialogOpen(false)
+
+    try {
+      await deleteDevice(currentDevice.id)
+      toast({
+        title: "Thành công",
+        description: "Đã xóa thiết bị",
+      })
+      setIsDeleteDialogOpen(false)
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa thiết bị",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleLinkToTable = (tableId: string | null) => {
+  const handleLinkToTable = async (tableId: string | null) => {
     if (!currentDevice) return
 
-    const table = tables.find((t) => t.id === tableId)
-    setDevices(
-      devices.map((device) =>
-        device.id === currentDevice.id
-          ? {
-              ...device,
-              tableId,
-              tableNumber: table?.number || null,
-            }
-          : device,
-      ),
-    )
-    setIsLinkDialogOpen(false)
+    try {
+      await updateDevice({
+        id: currentDevice.id,
+        table_id: tableId,
+      })
+
+      toast({
+        title: "Thành công",
+        description: "Đã liên kết thiết bị với bàn",
+      })
+      setIsLinkDialogOpen(false)
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể liên kết thiết bị với bàn",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleAddMessage = () => {
@@ -500,9 +416,9 @@ export default function DevicesPage() {
                     Cửa hàng
                   </Label>
                   <Select
-                    value={newDevice.shopId}
+                    value={newDevice.shop_id}
                     onValueChange={(value) =>
-                      setNewDevice({ ...newDevice, shopId: value, gatewayId: "", tableId: null })
+                      setNewDevice({ ...newDevice, shop_id: value, gateway_id: "", table_id: null })
                     }
                   >
                     <SelectTrigger className="col-span-3">
@@ -522,16 +438,16 @@ export default function DevicesPage() {
                     Gateway
                   </Label>
                   <Select
-                    value={newDevice.gatewayId}
-                    onValueChange={(value) => setNewDevice({ ...newDevice, gatewayId: value })}
-                    disabled={!newDevice.shopId}
+                    value={newDevice.gateway_id}
+                    onValueChange={(value) => setNewDevice({ ...newDevice, gateway_id: value })}
+                    disabled={!newDevice.shop_id}
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="Chọn gateway" />
                     </SelectTrigger>
                     <SelectContent>
                       {gateways
-                        .filter((gateway) => gateway.shopId === newDevice.shopId)
+                        .filter((gateway) => gateway.shopId === newDevice.shop_id)
                         .map((gateway) => (
                           <SelectItem key={gateway.id} value={gateway.id}>
                             {gateway.name}
@@ -545,11 +461,11 @@ export default function DevicesPage() {
                     Bàn (tùy chọn)
                   </Label>
                   <Select
-                    value={newDevice.tableId || "__not_linked__"}
+                    value={newDevice.table_id || "__not_linked__"}
                     onValueChange={(value) =>
-                      setNewDevice({ ...newDevice, tableId: value === "__not_linked__" ? null : value })
+                      setNewDevice({ ...newDevice, table_id: value === "__not_linked__" ? null : value })
                     }
-                    disabled={!newDevice.shopId}
+                    disabled={!newDevice.shop_id}
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="Chọn bàn" />
@@ -559,7 +475,8 @@ export default function DevicesPage() {
                       {tables
                         .filter(
                           (table) =>
-                            table.shopId === newDevice.shopId && !devices.some((device) => device.tableId === table.id),
+                            table.shopId === newDevice.shop_id &&
+                            !devices.some((device) => device.tableId === table.id),
                         )
                         .map((table) => (
                           <SelectItem key={table.id} value={table.id}>
@@ -589,7 +506,9 @@ export default function DevicesPage() {
               <Smartphone className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Tổng thiết bị</p>
-                <p className="text-2xl font-bold">{filteredDevices.length}</p>
+                <p className="text-2xl font-bold">
+                  {devicesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : filteredDevices.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -600,7 +519,13 @@ export default function DevicesPage() {
               <CheckCircle className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Trực tuyến</p>
-                <p className="text-2xl font-bold">{filteredDevices.filter((d) => d.status === "online").length}</p>
+                <p className="text-2xl font-bold">
+                  {devicesLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    filteredDevices.filter((d) => d.status === "online").length
+                  )}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -611,7 +536,13 @@ export default function DevicesPage() {
               <Link className="h-5 w-5 text-purple-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Đã liên kết bàn</p>
-                <p className="text-2xl font-bold">{filteredDevices.filter((d) => d.tableId).length}</p>
+                <p className="text-2xl font-bold">
+                  {devicesLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    filteredDevices.filter((d) => d.tableId).length
+                  )}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -622,7 +553,13 @@ export default function DevicesPage() {
               <MessageSquare className="h-5 w-5 text-orange-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Tổng tin nhắn</p>
-                <p className="text-2xl font-bold">{filteredDevices.reduce((sum, d) => sum + d.messages.length, 0)}</p>
+                <p className="text-2xl font-bold">
+                  {devicesLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    filteredDevices.reduce((sum, d) => sum + d.messages.length, 0)
+                  )}
+                </p>
               </div>
             </div>
           </CardContent>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +25,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Wifi, MoreVertical, Plus, Edit, Trash2, Activity, AlertCircle, CheckCircle } from "lucide-react"
+import { useGateways, useShops } from "@/hooks/use-database"
+import { useAuth } from "@/hooks/useAuth"
+import { toast } from "@/hooks/use-toast"
 
 type Gateway = {
   id: string
@@ -41,12 +44,24 @@ type Gateway = {
 }
 
 export default function GatewaysPage() {
-  const [shops] = useState([
+  const { user } = useAuth()
+  const { shops, loading: shopsLoading } = useShops()
+  const [selectedShop, setSelectedShop] = useState("")
+  const { gateways, loading: gatewaysLoading, createGateway, updateGateway, deleteGateway } = useGateways(selectedShop)
+
+  // Set default shop when shops load
+  useEffect(() => {
+    if (shops.length > 0 && !selectedShop) {
+      setSelectedShop(shops[0].id)
+    }
+  }, [shops, selectedShop])
+
+  const [shopsLocal] = useState([
     { id: "1", name: "Cà phê Khách Tui Vui" },
     { id: "2", name: "Nhà hàng Khách Vui" },
   ])
 
-  const [gateways, setGateways] = useState<Gateway[]>([
+  const [gatewaysLocal, setGateways] = useState<Gateway[]>([
     {
       id: "1",
       name: "Gateway Tầng 1",
@@ -92,43 +107,46 @@ export default function GatewaysPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [currentGateway, setCurrentGateway] = useState<Gateway | null>(null)
-  const [newGateway, setNewGateway] = useState<
-    Omit<Gateway, "id" | "shopName" | "status" | "connectedDevices" | "lastSeen" | "version">
-  >({
+  const [newGateway, setNewGateway] = useState({
     name: "",
-    shopId: "",
-    serverIp: "",
-    webServerPort: 8080,
-    webSocketPort: 8081,
+    shop_id: "",
+    server_ip: "",
+    web_server_port: 8080,
+    websocket_port: 8081,
   })
 
-  const handleAddGateway = () => {
-    const shopName = shops.find((shop) => shop.id === newGateway.shopId)?.name || ""
-    const gateway: Gateway = {
-      id: Date.now().toString(),
-      ...newGateway,
-      shopName,
-      status: "offline",
-      connectedDevices: 0,
-      lastSeen: "Chưa kết nối",
-      version: "v1.2.3",
+  const handleAddGateway = async () => {
+    try {
+      await createGateway({
+        ...newGateway,
+        shop_id: newGateway.shop_id,
+      })
+      setNewGateway({
+        name: "",
+        shop_id: "",
+        server_ip: "",
+        web_server_port: 8080,
+        websocket_port: 8081,
+      })
+      setIsAddDialogOpen(false)
+      toast({
+        title: "Thành công",
+        description: "Đã thêm gateway mới",
+      })
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm gateway",
+        variant: "destructive",
+      })
     }
-    setGateways([...gateways, gateway])
-    setNewGateway({
-      name: "",
-      shopId: "",
-      serverIp: "",
-      webServerPort: 8080,
-      webSocketPort: 8081,
-    })
-    setIsAddDialogOpen(false)
   }
 
   const handleEditGateway = () => {
     if (!currentGateway) return
 
     setGateways(
-      gateways.map((gateway) =>
+      gatewaysLocal.map((gateway) =>
         gateway.id === currentGateway.id
           ? {
               ...gateway,
@@ -145,7 +163,7 @@ export default function GatewaysPage() {
 
   const handleDeleteGateway = () => {
     if (!currentGateway) return
-    setGateways(gateways.filter((gateway) => gateway.id !== currentGateway.id))
+    setGateways(gatewaysLocal.filter((gateway) => gateway.id !== currentGateway.id))
     setIsDeleteDialogOpen(false)
   }
 
@@ -225,8 +243,8 @@ export default function GatewaysPage() {
                   Cửa hàng
                 </Label>
                 <Select
-                  value={newGateway.shopId}
-                  onValueChange={(value) => setNewGateway({ ...newGateway, shopId: value })}
+                  value={newGateway.shop_id}
+                  onValueChange={(value) => setNewGateway({ ...newGateway, shop_id: value })}
                 >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Chọn cửa hàng" />
@@ -246,8 +264,8 @@ export default function GatewaysPage() {
                 </Label>
                 <Input
                   id="serverIp"
-                  value={newGateway.serverIp}
-                  onChange={(e) => setNewGateway({ ...newGateway, serverIp: e.target.value })}
+                  value={newGateway.server_ip}
+                  onChange={(e) => setNewGateway({ ...newGateway, server_ip: e.target.value })}
                   className="col-span-3"
                   placeholder="192.168.1.100"
                 />
@@ -259,9 +277,9 @@ export default function GatewaysPage() {
                 <Input
                   id="webServerPort"
                   type="number"
-                  value={newGateway.webServerPort}
+                  value={newGateway.web_server_port}
                   onChange={(e) =>
-                    setNewGateway({ ...newGateway, webServerPort: Number.parseInt(e.target.value) || 8080 })
+                    setNewGateway({ ...newGateway, web_server_port: Number.parseInt(e.target.value) || 8080 })
                   }
                   className="col-span-3"
                 />
@@ -273,9 +291,9 @@ export default function GatewaysPage() {
                 <Input
                   id="webSocketPort"
                   type="number"
-                  value={newGateway.webSocketPort}
+                  value={newGateway.websocket_port}
                   onChange={(e) =>
-                    setNewGateway({ ...newGateway, webSocketPort: Number.parseInt(e.target.value) || 8081 })
+                    setNewGateway({ ...newGateway, websocket_port: Number.parseInt(e.target.value) || 8081 })
                   }
                   className="col-span-3"
                 />
@@ -299,7 +317,7 @@ export default function GatewaysPage() {
               <Wifi className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Tổng Gateway</p>
-                <p className="text-2xl font-bold">{gateways.length}</p>
+                <p className="text-2xl font-bold">{gatewaysLocal.length}</p>
               </div>
             </div>
           </CardContent>
@@ -310,7 +328,7 @@ export default function GatewaysPage() {
               <CheckCircle className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Trực tuyến</p>
-                <p className="text-2xl font-bold">{gateways.filter((g) => g.status === "online").length}</p>
+                <p className="text-2xl font-bold">{gatewaysLocal.filter((g) => g.status === "online").length}</p>
               </div>
             </div>
           </CardContent>
@@ -321,7 +339,7 @@ export default function GatewaysPage() {
               <AlertCircle className="h-5 w-5 text-gray-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Ngoại tuyến</p>
-                <p className="text-2xl font-bold">{gateways.filter((g) => g.status === "offline").length}</p>
+                <p className="text-2xl font-bold">{gatewaysLocal.filter((g) => g.status === "offline").length}</p>
               </div>
             </div>
           </CardContent>
@@ -332,7 +350,7 @@ export default function GatewaysPage() {
               <Activity className="h-5 w-5 text-purple-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Thiết bị kết nối</p>
-                <p className="text-2xl font-bold">{gateways.reduce((sum, g) => sum + g.connectedDevices, 0)}</p>
+                <p className="text-2xl font-bold">{gatewaysLocal.reduce((sum, g) => sum + g.connectedDevices, 0)}</p>
               </div>
             </div>
           </CardContent>
@@ -341,7 +359,7 @@ export default function GatewaysPage() {
 
       {/* Gateways List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {gateways.map((gateway) => (
+        {gatewaysLocal.map((gateway) => (
           <Card key={gateway.id} className="overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">

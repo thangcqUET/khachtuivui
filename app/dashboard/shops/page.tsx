@@ -22,107 +22,118 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Store, MoreVertical, Plus, Edit, Trash2, MapPin, Phone, Mail, Clock } from "lucide-react"
-
-type Shop = {
-  id: string
-  name: string
-  address: string
-  phone: string
-  email: string
-  reminderTime: number
-  reminderUnit: "seconds" | "minutes" | "hours"
-  tables: number
-  devices: number
-  gateways: number
-}
+import { Store, MoreVertical, Plus, Edit, Trash2, MapPin, Phone, Mail, Clock, Loader2 } from "lucide-react"
+import { useShops } from "@/hooks/use-database"
+import { useAuth } from "@/hooks/useAuth"
+import { toast } from "@/hooks/use-toast"
 
 export default function ShopsPage() {
-  const [shops, setShops] = useState<Shop[]>([
-    {
-      id: "1",
-      name: "Cà phê Khách Tui Vui",
-      address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
-      phone: "0901234567",
-      email: "cafe@khachtuivui.com",
-      reminderTime: 30,
-      reminderUnit: "minutes",
-      tables: 12,
-      devices: 15,
-      gateways: 2,
-    },
-    {
-      id: "2",
-      name: "Nhà hàng Khách Vui",
-      address: "456 Lê Lợi, Quận 3, TP.HCM",
-      phone: "0909876543",
-      email: "restaurant@khachtuivui.com",
-      reminderTime: 45,
-      reminderUnit: "minutes",
-      tables: 12,
-      devices: 13,
-      gateways: 1,
-    },
-  ])
+  const { user } = useAuth()
+  const { shops, loading, error, createShop, updateShop, deleteShop } = useShops()
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [currentShop, setCurrentShop] = useState<Shop | null>(null)
-  const [newShop, setNewShop] = useState<Omit<Shop, "id" | "tables" | "devices" | "gateways">>({
+  const [currentShop, setCurrentShop] = useState<any>(null)
+  const [newShop, setNewShop] = useState({
     name: "",
     address: "",
     phone: "",
     email: "",
-    reminderTime: 30,
-    reminderUnit: "minutes",
+    reminder_time: 30,
+    reminder_unit: "minutes" as "seconds" | "minutes" | "hours",
   })
 
-  const handleAddShop = () => {
-    const shop: Shop = {
-      id: Date.now().toString(),
-      ...newShop,
-      tables: 0,
-      devices: 0,
-      gateways: 0,
+  const handleAddShop = async () => {
+    if (!user) return
+
+    try {
+      await createShop({
+        ...newShop,
+        user_id: user.id,
+      })
+      setNewShop({
+        name: "",
+        address: "",
+        phone: "",
+        email: "",
+        reminder_time: 30,
+        reminder_unit: "minutes",
+      })
+      setIsAddDialogOpen(false)
+      toast({
+        title: "Thành công",
+        description: "Đã thêm cửa hàng mới",
+      })
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm cửa hàng",
+        variant: "destructive",
+      })
     }
-    setShops([...shops, shop])
-    setNewShop({
-      name: "",
-      address: "",
-      phone: "",
-      email: "",
-      reminderTime: 30,
-      reminderUnit: "minutes",
-    })
-    setIsAddDialogOpen(false)
   }
 
-  const handleEditShop = () => {
+  const handleEditShop = async () => {
     if (!currentShop) return
 
-    setShops(
-      shops.map((shop) =>
-        shop.id === currentShop.id
-          ? {
-              ...shop,
-              name: currentShop.name,
-              address: currentShop.address,
-              phone: currentShop.phone,
-              email: currentShop.email,
-              reminderTime: currentShop.reminderTime,
-              reminderUnit: currentShop.reminderUnit,
-            }
-          : shop,
-      ),
+    try {
+      await updateShop(currentShop.id, {
+        name: currentShop.name,
+        address: currentShop.address,
+        phone: currentShop.phone,
+        email: currentShop.email,
+        reminder_time: currentShop.reminder_time,
+        reminder_unit: currentShop.reminder_unit,
+      })
+      setIsEditDialogOpen(false)
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật thông tin cửa hàng",
+      })
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật cửa hàng",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteShop = async () => {
+    if (!currentShop) return
+
+    try {
+      await deleteShop(currentShop.id)
+      setIsDeleteDialogOpen(false)
+      toast({
+        title: "Thành công",
+        description: "Đã xóa cửa hàng",
+      })
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa cửa hàng",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Đang tải...</span>
+      </div>
     )
-    setIsEditDialogOpen(false)
   }
 
-  const handleDeleteShop = () => {
-    if (!currentShop) return
-    setShops(shops.filter((shop) => shop.id !== currentShop.id))
-    setIsDeleteDialogOpen(false)
+  if (error) {
+    return (
+      <div className="text-center text-red-600 p-4">
+        <p>Lỗi: {error}</p>
+      </div>
+    )
   }
 
   return (
@@ -188,23 +199,23 @@ export default function ShopsPage() {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="reminderTime" className="text-right">
+                <Label htmlFor="reminder_time" className="text-right">
                   Thời gian nhắc nhở
                 </Label>
                 <div className="col-span-3 flex gap-2">
                   <Input
-                    id="reminderTime"
+                    id="reminder_time"
                     type="number"
-                    value={newShop.reminderTime}
-                    onChange={(e) => setNewShop({ ...newShop, reminderTime: Number.parseInt(e.target.value) || 0 })}
+                    value={newShop.reminder_time}
+                    onChange={(e) => setNewShop({ ...newShop, reminder_time: Number.parseInt(e.target.value) || 0 })}
                     className="w-24"
                   />
                   <select
-                    value={newShop.reminderUnit}
+                    value={newShop.reminder_unit}
                     onChange={(e) =>
                       setNewShop({
                         ...newShop,
-                        reminderUnit: e.target.value as "seconds" | "minutes" | "hours",
+                        reminder_unit: e.target.value as "seconds" | "minutes" | "hours",
                       })
                     }
                     className="border border-gray-300 rounded-md px-3 py-2"
@@ -227,7 +238,7 @@ export default function ShopsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {shops.map((shop) => (
+        {shops?.map((shop) => (
           <Card key={shop.id} className="overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -289,23 +300,9 @@ export default function ShopsPage() {
                 <div className="flex items-center">
                   <Clock className="h-4 w-4 mr-2 text-gray-500" />
                   <span>
-                    Nhắc nhở sau {shop.reminderTime}{" "}
-                    {shop.reminderUnit === "seconds" ? "giây" : shop.reminderUnit === "minutes" ? "phút" : "giờ"}
+                    Nhắc nhở sau {shop.reminder_time}{" "}
+                    {shop.reminder_unit === "seconds" ? "giây" : shop.reminder_unit === "minutes" ? "phút" : "giờ"}
                   </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 mt-4">
-                <div className="bg-blue-50 p-2 rounded-md text-center">
-                  <div className="text-lg font-semibold text-blue-700">{shop.tables}</div>
-                  <div className="text-xs text-blue-600">Bàn</div>
-                </div>
-                <div className="bg-green-50 p-2 rounded-md text-center">
-                  <div className="text-lg font-semibold text-green-700">{shop.devices}</div>
-                  <div className="text-xs text-green-600">Thiết bị</div>
-                </div>
-                <div className="bg-purple-50 p-2 rounded-md text-center">
-                  <div className="text-lg font-semibold text-purple-700">{shop.gateways}</div>
-                  <div className="text-xs text-purple-600">Gateway</div>
                 </div>
               </div>
             </CardContent>
@@ -373,25 +370,25 @@ export default function ShopsPage() {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-reminderTime" className="text-right">
+                <Label htmlFor="edit-reminder_time" className="text-right">
                   Thời gian nhắc nhở
                 </Label>
                 <div className="col-span-3 flex gap-2">
                   <Input
-                    id="edit-reminderTime"
+                    id="edit-reminder_time"
                     type="number"
-                    value={currentShop.reminderTime}
+                    value={currentShop.reminder_time}
                     onChange={(e) =>
-                      setCurrentShop({ ...currentShop, reminderTime: Number.parseInt(e.target.value) || 0 })
+                      setCurrentShop({ ...currentShop, reminder_time: Number.parseInt(e.target.value) || 0 })
                     }
                     className="w-24"
                   />
                   <select
-                    value={currentShop.reminderUnit}
+                    value={currentShop.reminder_unit}
                     onChange={(e) =>
                       setCurrentShop({
                         ...currentShop,
-                        reminderUnit: e.target.value as "seconds" | "minutes" | "hours",
+                        reminder_unit: e.target.value as "seconds" | "minutes" | "hours",
                       })
                     }
                     className="border border-gray-300 rounded-md px-3 py-2"
