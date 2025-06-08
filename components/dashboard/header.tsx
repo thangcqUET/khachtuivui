@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useNotifications } from "@/hooks/use-notifications"
 
 export function DashboardHeader() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { notifications, markAsRead } = useNotifications()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -109,7 +109,7 @@ export function DashboardHeader() {
               <DropdownMenuItem>Hồ sơ</DropdownMenuItem>
               <DropdownMenuItem>Cài đặt</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => {}}>Đăng xuất</DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut}>Đăng xuất</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
